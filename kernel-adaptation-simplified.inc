@@ -139,7 +139,7 @@ DTBOS=""
 for dtbo in %{deviceinfo_dtbo}; do
     DTBOS+=" %{source_directory}/out/arch/%{kernel_arch}/boot/dts/$dtbo"
 done
-python3 kernel-adaptation-simplified/mkdtboimg.py create %{source_directory}/out/dtbo.img $DTBOS
+python2 kernel-adaptation-simplified/mkdtboimg.py create %{source_directory}/out/dtbo.img $DTBOS
 %endif
 
 %install
