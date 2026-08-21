@@ -100,10 +100,10 @@ BuildRequires:  cross-%{crossbuild}-as
 
 export ARCH=%{kernel_arch}
 export LOCALVERSION="-%{device}"
-export CLANG_TRIPLE=%{clangtriple}
-export CROSS_COMPILE=%{crosscompile}
-export CROSS_COMPILE32=%{crosscompile32}
-export HOSTLDFLAGS=%{hostldflags}
+export CLANG_TRIPLE=%{?clangtriple}
+export CROSS_COMPILE=%{?crosscompile}
+export CROSS_COMPILE32=%{?crosscompile32}
+export HOSTLDFLAGS=%{?hostldflags}
 
 rm -rf %{_tmpdir}
 mkdir -p %{_tmpdir}
@@ -125,18 +125,22 @@ sh patches/apply-patches.sh %{source_directory}
 
 %if 0%{?build_Image:1}
 echo "***** Building Image *****"
-make %{makeopts} -C %{source_directory} -j$(nproc) O=out %{kcflags} %{kernel_config}
-make %{makeopts} -C %{source_directory} -j$(nproc) O=out %{kcflags}
+make %{?makeopts} -C %{source_directory} -j$(nproc) O=out %{?kcflags} %{kernel_config}
+make %{?makeopts} -C %{source_directory} -j$(nproc) O=out %{?kcflags}
 %endif
 
 %if 0%{?build_modules:1}
 echo "***** Building Modules *****"
-make %{makeopts} -C %{source_directory} -j$(nproc) O=out %{kcflags} modules
+make %{?makeopts} -C %{source_directory} -j$(nproc) O=out %{?kcflags} modules
 %endif
 
 %if 0%{?build_dtboimage:1}
 echo "***** Building DTBO Image *****"
-python3 kernel-adaptation-simplified/mkdtboimg.py create %{source_directory}/out/dtbo.img %{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtbo}
+DTBOS=""
+for dtbo in %{deviceinfo_dtbo}; do
+    DTBOS+=" %{source_directory}/out/arch/%{kernel_arch}/boot/dts/$dtbo"
+done
+python3 kernel-adaptation-simplified/mkdtboimg.py create %{source_directory}/out/dtbo.img $DTBOS
 %endif
 
 %install
@@ -144,10 +148,10 @@ echo "***** Installing *****"
 
 export ARCH=%{kernel_arch}
 export LOCALVERSION="-%{device}"
-export CLANG_TRIPLE=%{clangtriple}
-export CROSS_COMPILE=%{crosscompile}
-export CROSS_COMPILE32=%{crosscompile32}
-export HOSTLDFLAGS=%{hostldflags}
+export CLANG_TRIPLE=%{?clangtriple}
+export CROSS_COMPILE=%{?crosscompile}
+export CROSS_COMPILE32=%{?crosscompile32}
+export HOSTLDFLAGS=%{?hostldflags}
 
 # Fall back to the tools bundled with kernel-adaptation-simplified when the
 # android build tools are not provided by the environment
@@ -160,7 +164,7 @@ fi
 
 %if %{build_modules}
 mkdir -p %{buildroot}/lib/modules
-make -C %{source_directory} O=out %{makeopts} INSTALL_MOD_STRIP=1 modules_install INSTALL_MOD_PATH=%{buildroot}
+make -C %{source_directory} O=out %{?makeopts} INSTALL_MOD_STRIP=1 modules_install INSTALL_MOD_PATH=%{buildroot}
 %endif
 
 echo "***** Building Boot Image *****"
