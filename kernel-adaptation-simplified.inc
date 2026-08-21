@@ -101,6 +101,9 @@ export CROSS_COMPILE=%{?crosscompile}
 export CROSS_COMPILE32=%{?crosscompile32}
 export HOSTLDFLAGS=%{?hostldflags}
 
+# Distro hardening flags from %%set_build_flags break kbuild
+unset CFLAGS CXXFLAGS LDFLAGS
+
 rm -rf %{_tmpdir}
 mkdir -p %{_tmpdir}
 
@@ -148,6 +151,9 @@ export CLANG_TRIPLE=%{?clangtriple}
 export CROSS_COMPILE=%{?crosscompile}
 export CROSS_COMPILE32=%{?crosscompile32}
 export HOSTLDFLAGS=%{?hostldflags}
+
+# Distro hardening flags from %%set_build_flags break kbuild
+unset CFLAGS CXXFLAGS LDFLAGS
 
 # Fall back to the tools bundled with kernel-adaptation-simplified when the
 # android build tools are not provided by the environment
