@@ -1,7 +1,7 @@
 #!/bin/bash
 
 HERE=`pwd`
-INSTALL_MOD_PATH="$HERE/buildroot/lib/modules/"
+INSTALL_MOD_PATH="${INSTALL_MOD_PATH:-$HERE/buildroot/lib/modules/}"
 TMPDIR="$HERE/tmp"
 MKBOOTIMG="python3 $MKBOOTIMG_PATH/mkbootimg.py"
 EXTRA_VENDOR_ARGS=""
@@ -21,7 +21,7 @@ if [ -d "$HERE/overlay/vendor-ramdisk-overlay" ]; then
 	mkdir -p "$TMPDIR/vendor-ramdisk"
 	cd "$TMPDIR/vendor-ramdisk"
 
-	if [[ -f "$HERE/overlay/vendor-ramdisk-overlay/lib/modules/modules.load" && "$DEVICEINFO_KENREL_DISABLE_KERNEL_MODULES" != "true" ]]; then
+	if [[ -f "$HERE/overlay/vendor-ramdisk-overlay/lib/modules/modules.load" && "$DEVICEINFO_KERNEL_DISABLE_MODULES" != "true" ]]; then
 		item_in_array() { local item match="$1"; shift; for item; do [ "$item" = "$match" ] && return 0; done; return 1; }
 		modules_dep="$(find "$INSTALL_MOD_PATH" -type f -name modules.dep)"
 		modules="$(dirname "$modules_dep")" # e.g. ".../lib/modules/5.10.110-gb4d6c7a2f3a6"

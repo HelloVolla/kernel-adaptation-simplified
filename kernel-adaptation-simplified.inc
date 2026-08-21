@@ -19,6 +19,14 @@
 %define defconfig defconfig
 %endif
 
+%if 0%{!?kernel_config:1}
+%define kernel_config %{defconfig}
+%endif
+
+%if 0%{!?kernel_image:1}
+%define kernel_image Image.gz
+%endif
+
 %if 0%{!?source_directory:1}
 %define source_directory linux
 %endif
@@ -37,6 +45,18 @@
 
 %if 0%{!?build_modules:1}
 %define build_modules 1
+%endif
+
+%if 0%{!?ramdisk:1}
+%define ramdisk kernel-adaptation-simplified/halium-boot-ramdisk.img
+%endif
+
+%if 0%{!?deviceinfo_flash_offset_second:1}
+%define deviceinfo_flash_offset_second 0x00000000
+%endif
+
+%if 0%{!?deviceinfo_bootimg_append_vbmeta:1}
+%define deviceinfo_bootimg_append_vbmeta false
 %endif
 
 %define _tmpdir tmp
@@ -94,7 +114,7 @@ export CROSS_COMPILE=%{crossbuild}-meego-linux-gnu-
 export PATH=/opt/cross/bin/:$PATH
 %endif
 
-%if 0%{?extra_config:1} != 0
+%if 0%{?extra_config:1}
 [ -e "./%{extra_config}" ] && cp -f ./%{extra_config} %{source_directory}/arch/%{kernel_arch}/configs/%{extra_config}
 %endif
 
@@ -116,7 +136,7 @@ make %{makeopts} -C %{source_directory} -j$(nproc) O=out %{kcflags} modules
 
 %if 0%{?build_dtboimage:1}
 echo "***** Building DTBO Image *****"
-python2 kernel-adaptation-simplified/mkdtboimg.py create linux/out/dtbo.img %{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtbo}
+python3 kernel-adaptation-simplified/mkdtboimg.py create %{source_directory}/out/dtbo.img %{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtbo}
 %endif
 
 %install
@@ -129,13 +149,22 @@ export CROSS_COMPILE=%{crosscompile}
 export CROSS_COMPILE32=%{crosscompile32}
 export HOSTLDFLAGS=%{hostldflags}
 
+# Fall back to the tools bundled with kernel-adaptation-simplified when the
+# android build tools are not provided by the environment
+export MKBOOTIMG_PATH="${MKBOOTIMG_PATH:-./kernel-adaptation-simplified}"
+if [ -n "${AVB_PATH:-}" ]; then
+    AVBTOOL="python3 $AVB_PATH/avbtool.py"
+else
+    AVBTOOL="python2 ./kernel-adaptation-simplified/avbtool"
+fi
+
 %if %{build_modules}
 mkdir -p %{buildroot}/lib/modules
 make -C %{source_directory} O=out %{makeopts} INSTALL_MOD_STRIP=1 modules_install INSTALL_MOD_PATH=%{buildroot}
 %endif
 
 echo "***** Building Boot Image *****"
-KERNEL=%{source_directory}/out/arch/%{kernel_arch}/boot/Image.gz
+KERNEL=%{source_directory}/out/arch/%{kernel_arch}/boot/%{kernel_image}
 DTB=%{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtb}
 EXTRA_ARGS=""
 RAMDISK=%{ramdisk}
@@ -151,7 +180,7 @@ if [ "%{deviceinfo_bootimg_header_version}" -eq 2 ]; then
     EXTRA_ARGS+=" --dtb $DTB --dtb_offset %{deviceinfo_flash_offset_dtb}"
 fi
 
-#Createl boot.img
+# Create boot.img
 if [ "%{deviceinfo_bootimg_header_version}" -le 2 ]; then
     python3 $MKBOOTIMG_PATH/mkbootimg.py --kernel "$KERNEL" --ramdisk "$RAMDISK" --cmdline "%{deviceinfo_kernel_cmdline}" --header_version %{deviceinfo_bootimg_header_version} -o "$OUT" --os_version %{deviceinfo_bootimg_os_version} --os_patch_level %{deviceinfo_bootimg_os_patch_level} $EXTRA_ARGS
 else
@@ -176,6 +205,7 @@ else
         export DEVICEINFO_ROOTFS_IMAGE_SECTOR_SIZE=%{deviceinfo_rootfs_image_sector_size}
         export DEVICEINFO_HALIUM_VERSION=%{deviceinfo_halium_version}
         export DEVICEINFO_KERNEL_DISABLE_MODULES=%{deviceinfo_kernel_disable_modules}
+        export INSTALL_MOD_PATH=%{buildroot}/lib/modules/
 
         bash ./kernel-adaptation-simplified/mkvendorboot.sh "$DTB"
         cp tmp/vendor-ramdisk/vendor_boot.img %{buildroot}/boot/ || true
@@ -185,11 +215,11 @@ fi
 #Use AVB Tool to create final boot.img
 if [ -n "%{deviceinfo_bootimg_partition_size}" ]; then
     EXTRA_ARGS=""
-    [ -f "$HERE/rsa4096_boot.pem" ] && EXTRA_ARGS=" --key $HERE/rsa4096_boot.pem --algorithm SHA256_RSA4096"
-    python3 "$AVB_PATH/avbtool.py" add_hash_footer --image "$OUT" --partition_name boot --partition_size %{deviceinfo_bootimg_partition_size} $EXTRA_ARGS
+    [ -f "./rsa4096_boot.pem" ] && EXTRA_ARGS=" --key ./rsa4096_boot.pem --algorithm SHA256_RSA4096"
+    $AVBTOOL add_hash_footer --image "$OUT" --partition_name boot --partition_size %{deviceinfo_bootimg_partition_size} $EXTRA_ARGS
 
     if [ -n "%{deviceinfo_bootimg_append_vbmeta}" ] && %{deviceinfo_bootimg_append_vbmeta}; then
-        python3 "$AVB_PATH/avbtool.py" append_vbmeta_image --image "$OUT" --partition_size "%{deviceinfo_bootimg_partition_size}" --vbmeta_image "$TMPDOWN/vbmeta.img"
+        $AVBTOOL append_vbmeta_image --image "$OUT" --partition_size "%{deviceinfo_bootimg_partition_size}" --vbmeta_image ./vbmeta.img
     fi
 fi
 
@@ -203,7 +233,7 @@ cp %{source_directory}/out/arch/%{kernel_arch}/boot/boot.img %{buildroot}/boot/ 
 %if 0%{?devicetrees:1}
 for dtb in %{devicetrees}; do
 mkdir -p %{buildroot}/boot/$(basename $(dirname $dtb))
-cp linux/out/arch/%{kernel_arch}/boot/dts/$dtb %{buildroot}/boot/$dtb
+cp %{source_directory}/out/arch/%{kernel_arch}/boot/dts/$dtb %{buildroot}/boot/$dtb
 cp %{buildroot}/boot/*/*.dtb %{buildroot}/boot/
 done
 %endif
