@@ -18,6 +18,10 @@ mkdir -p $BUILD_TOOLS
 [ -e $BUILD_TOOLS/android_system_tools_mkbootimg ] || git clone https://github.com/LineageOS/android_system_tools_mkbootimg -b lineage-20.0 $BUILD_TOOLS/android_system_tools_mkbootimg --depth 1 --recursive
 [ -e $BUILD_TOOLS/2.7.5 ] || git clone https://android.googlesource.com/platform/prebuilts/python/linux-x86/2.7.5/ $BUILD_TOOLS/2.7.5 --depth 1 --recursive
 
+# Unified halium boot ramdisk, used unless the device provides its own
+RAMDISK_ARCH=${RAMDISK_ARCH:-arm64}
+[ -e $BUILD_TOOLS/halium-boot-ramdisk.img ] || curl -L -o $BUILD_TOOLS/halium-boot-ramdisk.img https://github.com/halium/initramfs-tools-halium/releases/download/dynparts/initrd.img-touch-$RAMDISK_ARCH
+
 export CLANG_PATH=$BUILD_TOOLS/linux-x86/$CLANG_VERSION/bin/
 export BUILD_TOOLS_BIN=$BUILD_TOOLS/build-tools/linux-x86/bin
 export BUILD_TOOLS_PATH=$BUILD_TOOLS/build-tools/path/linux-x86
@@ -27,4 +31,5 @@ export GCC_ARM32_PATH=$BUILD_TOOLS/arm-linux-androideabi-4.9/bin
 export AVB_PATH=$BUILD_TOOLS/avb
 export MKBOOTIMG_PATH=$BUILD_TOOLS/android_system_tools_mkbootimg
 export PYTHON2_PATH=$BUILD_TOOLS/2.7.5/bin
+export HALIUM_RAMDISK=$BUILD_TOOLS/halium-boot-ramdisk.img
 export PATH=$CLANG_PATH:$BUILD_TOOLS_BIN:$KERNEL_BUILD_TOOLS_BIN:$GCC_PATH:$GCC_ARM32_PATH:$AVB_PATH:$MKBOOTIMG_PATH:$PYTHON2_PATH:$PATH

@@ -12,7 +12,8 @@ Add it to a device repo as a submodule at `kernel-adaptation-simplified/`:
 
     rpm/kernel-adaptation-<device>.spec   macros + %include of the .inc
     linux/                                kernel source (submodule)
-    ramdisk-<device>.img                  boot ramdisk (optional, defaults to bundled halium-boot)
+    ramdisk-overlay/                      optional, appended to the unified boot ramdisk
+    halium-boot-ramdisk.img               optional, replaces the unified boot ramdisk
     patches/apply-patches.sh + *.patch    optional, enabled with %apply_patches
     overlay/vendor-ramdisk-overlay/       optional, for vendor_boot builds
     <extra>_defconfig / *.config          config fragments referenced by the spec
@@ -45,7 +46,7 @@ Optional (with defaults):
     rpm_device                      defaults to %{device}
     kernel_config                   config make targets, defaults to %{defconfig}
     kernel_image                    kernel binary name, defaults to Image.gz
-    ramdisk                         defaults to the bundled halium-boot-ramdisk.img
+    ramdisk                         prebuilt boot ramdisk file, skips the unified one
     source_directory                defaults to linux
     device_target_cpu               forces the rpm target arch, e.g. aarch64
     extra_config                    fragment copied into arch/<arch>/configs before make
@@ -62,6 +63,16 @@ Optional (with defaults):
 
 Boot images are signed with `./rsa4096_boot.pem` from the device repo root when
 present.
+
+## Boot ramdisk
+
+`setup-env.sh` downloads the unified halium boot ramdisk (the dynparts release
+of halium/initramfs-tools-halium) and exports it as `HALIUM_RAMDISK`. Device
+specific content stays in the device repo: a `ramdisk-overlay/` directory is
+packed as cpio and appended to the unified ramdisk (recompressed to
+`deviceinfo_ramdisk_compression` when set), a committed
+`halium-boot-ramdisk.img` replaces the unified base entirely, and the
+`ramdisk` macro points at a fully prebuilt image.
 
 ## Bundled tools
 

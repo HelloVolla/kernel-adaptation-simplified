@@ -47,10 +47,6 @@
 %define build_modules 1
 %endif
 
-%if 0%{!?ramdisk:1}
-%define ramdisk kernel-adaptation-simplified/halium-boot-ramdisk.img
-%endif
-
 %if 0%{!?deviceinfo_flash_offset_second:1}
 %define deviceinfo_flash_offset_second 0x00000000
 %endif
@@ -171,8 +167,38 @@ echo "***** Building Boot Image *****"
 KERNEL=%{source_directory}/out/arch/%{kernel_arch}/boot/%{kernel_image}
 DTB=%{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtb}
 EXTRA_ARGS=""
-RAMDISK=%{ramdisk}
 OUT=%{source_directory}/out/arch/%{kernel_arch}/boot/boot.img
+
+# Boot ramdisk: an explicit ramdisk macro or a halium-boot-ramdisk.img in the
+# device repo wins, otherwise the unified halium ramdisk fetched by
+# setup-env.sh is used, with ramdisk-overlay appended when present
+RAMDISK="%{?ramdisk}"
+if [ -z "$RAMDISK" ]; then
+    if [ -f ./halium-boot-ramdisk.img ]; then
+        RAMDISK="$PWD/halium-boot-ramdisk.img"
+    else
+        RAMDISK="$HALIUM_RAMDISK"
+    fi
+    if [ ! -f "$RAMDISK" ]; then
+        echo "No boot ramdisk found, run setup-env.sh or provide one"
+        exit 1
+    fi
+    case "%{?deviceinfo_ramdisk_compression}" in
+        lz4) COMPRESSION_CMD="lz4 -l -9" ;;
+        *)   COMPRESSION_CMD="gzip -9" ;;
+    esac
+    if [ "%{?deviceinfo_ramdisk_compression}" = "lz4" ]; then
+        gzip -dc "$RAMDISK" | $COMPRESSION_CMD > %{_tmpdir}/boot-ramdisk.img
+        RAMDISK="$PWD/%{_tmpdir}/boot-ramdisk.img"
+    fi
+    if [ -d ./ramdisk-overlay ]; then
+        if [ "$RAMDISK" != "$PWD/%{_tmpdir}/boot-ramdisk.img" ]; then
+            cp "$RAMDISK" %{_tmpdir}/boot-ramdisk.img
+            RAMDISK="$PWD/%{_tmpdir}/boot-ramdisk.img"
+        fi
+        (cd ramdisk-overlay && find . | cpio -o -H newc | $COMPRESSION_CMD) >> "$RAMDISK"
+    fi
+fi
 
 mkdir -p %{buildroot}/boot
 
