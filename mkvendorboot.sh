@@ -6,6 +6,7 @@ TMPDIR="$HERE/tmp"
 MKBOOTIMG="python3 $MKBOOTIMG_PATH/mkbootimg.py"
 EXTRA_VENDOR_ARGS=""
 DTB=$1
+case "$DTB" in /*) ;; *) DTB="$HERE/$DTB" ;; esac
 echo $?
 echo $DTB
 
@@ -65,7 +66,7 @@ if [ -d "$HERE/overlay/vendor-ramdisk-overlay" ]; then
 
 	find . | cpio -o -H newc | $COMPRESSION_CMD > "$VENDOR_RAMDISK"
 
-	EXTRA_VENDOR_ARGS+=" --base $DEVICEINFO_FLASH_OFFSET_BASE --kernel_offset $DEVICEINFO_FLASH_OFFSET_KERNEL --ramdisk_offset $DEVICEINFO_FLASH_OFFSET_RAMDISK --tags_offset $DEVICEINFO_FLASH_OFFSET_TAGS --pagesize $DEVICEINFO_FLASH_PAGESIZE --dtb $HERE/$DTB --dtb_offset $DEVICEINFO_FLASH_OFFSET_DTB"
+	EXTRA_VENDOR_ARGS+=" --base $DEVICEINFO_FLASH_OFFSET_BASE --kernel_offset $DEVICEINFO_FLASH_OFFSET_KERNEL --ramdisk_offset $DEVICEINFO_FLASH_OFFSET_RAMDISK --tags_offset $DEVICEINFO_FLASH_OFFSET_TAGS --pagesize $DEVICEINFO_FLASH_PAGESIZE --dtb $DTB --dtb_offset $DEVICEINFO_FLASH_OFFSET_DTB"
 
 	if [ -n "$VENDOR_RAMDISK" ]; then
         VENDOR_RAMDISK_ARGS=()

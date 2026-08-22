@@ -171,7 +171,11 @@ make -C %{source_directory} O=out %{?makeopts} INSTALL_MOD_STRIP=1 modules_insta
 
 echo "***** Building Boot Image *****"
 KERNEL=%{source_directory}/out/arch/%{kernel_arch}/boot/%{kernel_image}
+%if 0%{?deviceinfo_bootimg_prebuilt_dtb:1}
+DTB="$PWD/%{deviceinfo_bootimg_prebuilt_dtb}"
+%else
 DTB=%{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtb}
+%endif
 EXTRA_ARGS=""
 OUT=%{source_directory}/out/arch/%{kernel_arch}/boot/boot.img
 
@@ -220,12 +224,20 @@ fi
 if [ "%{deviceinfo_bootimg_header_version}" -le 2 ]; then
     python3 $MKBOOTIMG_PATH/mkbootimg.py --kernel "$KERNEL" --ramdisk "$RAMDISK" --cmdline "%{deviceinfo_kernel_cmdline}" --header_version %{deviceinfo_bootimg_header_version} -o "$OUT" --os_version %{deviceinfo_bootimg_os_version} --os_patch_level %{deviceinfo_bootimg_os_patch_level} $EXTRA_ARGS
 else
+%if "%{?deviceinfo_bootimg_has_init_boot_partition}" == "true"
+    # Kernel-only boot.img, the ramdisk goes into init_boot.img
+    python3 $MKBOOTIMG_PATH/mkbootimg.py --kernel "$KERNEL" --header_version %{deviceinfo_bootimg_header_version} -o "$OUT" --os_version %{deviceinfo_bootimg_os_version} --os_patch_level %{deviceinfo_bootimg_os_patch_level} $EXTRA_ARGS
+
+    INIT_BOOT=%{source_directory}/out/arch/%{kernel_arch}/boot/init_boot.img
+    python3 $MKBOOTIMG_PATH/mkbootimg.py --ramdisk "$RAMDISK" --header_version %{deviceinfo_bootimg_header_version} -o "$INIT_BOOT"
+%else
     python3 $MKBOOTIMG_PATH/mkbootimg.py --kernel "$KERNEL" --ramdisk "$RAMDISK" --header_version %{deviceinfo_bootimg_header_version} -o "$OUT" --os_version %{deviceinfo_bootimg_os_version} --os_patch_level %{deviceinfo_bootimg_os_patch_level} $EXTRA_ARGS
+%endif
 
     # Build vendor_boot
     %if 0%{?build_vendor_boot:1}
         export DEVICEINFO_KERNEL_CMDLINE="%{deviceinfo_kernel_cmdline}"
-        export DEVICEINFO_DTB=%{deviceinfo_dtb}
+        export DEVICEINFO_DTB=%{?deviceinfo_dtb}
         export DEVICEINFO_RAMDISK_COMPRESSION=%{deviceinfo_ramdisk_compression}
         export DEVICEINFO_FLASH_PAGESIZE=%{deviceinfo_flash_pagesize}
         export DEVICEINFO_FLASH_OFFSET_BASE=%{deviceinfo_flash_offset_base}
@@ -259,10 +271,17 @@ if [ -n "%{deviceinfo_bootimg_partition_size}" ]; then
     fi
 fi
 
+%if "%{?deviceinfo_bootimg_has_init_boot_partition}" == "true"
+$AVBTOOL add_hash_footer --image "$INIT_BOOT" --partition_name init_boot --partition_size %{?deviceinfo_init_boot_partition_size}%{!?deviceinfo_init_boot_partition_size:8388608}
+cp "$INIT_BOOT" %{buildroot}/boot/
+%endif
+
 %if %{build_Image}
 echo "***** Installing Image *****"
 cp %{source_directory}/out/arch/%{kernel_arch}/boot/*Image* %{buildroot}/boot/
+%if 0%{?deviceinfo_dtb:1}
 cp %{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtb} %{buildroot}/boot/ || true
+%endif
 cp %{source_directory}/out/arch/%{kernel_arch}/boot/boot.img %{buildroot}/boot/ || true
 %endif
 
