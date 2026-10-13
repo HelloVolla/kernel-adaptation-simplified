@@ -73,12 +73,15 @@ BuildRequires:  kmod >= 9
 BuildRequires:  flex
 BuildRequires:  bison
 BuildRequires:  bc
-BuildRequires:  python3
 BuildRequires:  openssl
 #!BuildIgnore:  rpmlint-mini
-BuildRequires:  dtc
 BuildRequires:  clang
 BuildRequires:  lz4
+%if 0%{?fedora}
+BuildRequires:  python3
+%else
+BuildRequires:  python3-base
+%endif
 
 %if 0%{?crossbuild:1}
 BuildRequires:  cross-%{crossbuild}-gcc
