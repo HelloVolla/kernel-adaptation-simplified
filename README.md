@@ -37,8 +37,8 @@ Required:
     deviceinfo_kernel_cmdline
     deviceinfo_bootimg_header_version
     deviceinfo_bootimg_os_version / deviceinfo_bootimg_os_patch_level
-    deviceinfo_bootimg_partition_size
     deviceinfo_flash_pagesize + deviceinfo_flash_offset_* (header <= 2)
+    deviceinfo_flash_offset_dtb     header 2
     Version / Release
 
 Optional (with defaults):
@@ -47,6 +47,8 @@ Optional (with defaults):
     kernel_config                   config make targets, defaults to %{defconfig}
     kernel_image                    kernel binary name, defaults to Image.gz
     ramdisk                         prebuilt boot ramdisk file, skips the unified one
+    ramdisk_directory               directory packed as the whole boot ramdisk, skips the unified one
+    bootimg_name                    name of the boot image installed into /boot, defaults to boot.img
     source_directory                defaults to linux
     device_target_cpu               forces the rpm target arch, e.g. aarch64
     extra_config                    fragment copied into arch/<arch>/configs before make
@@ -58,7 +60,13 @@ Optional (with defaults):
     deviceinfo_ramdisk_compression  gzip / lz4 (vendor_boot)
     deviceinfo_kernel_disable_modules  skip modules in the vendor ramdisk
     deviceinfo_flash_offset_second  defaults to 0x00000000
+    deviceinfo_bootimg_partition_size  adds the avb hash footer when set
     deviceinfo_bootimg_append_vbmeta   defaults to false, appends ./vbmeta.img
+    deviceinfo_append_dtb           true appends the dtb to the kernel image (header 0/1)
+    deviceinfo_bootimg_prebuilt_dtb dtb file in the device repo used instead of deviceinfo_dtb
+    deviceinfo_bootimg_has_init_boot_partition  true puts the ramdisk into init_boot.img (header >= 3)
+    deviceinfo_init_boot_partition_size  defaults to 8388608
+    deviceinfo_bootimg_qcdt / deviceinfo_halium_version / deviceinfo_rootfs_image_sector_size  passed to mkvendorboot.sh
     crossbuild                      OBS cross toolchain instead of makeopts/clang
 
 Boot images are signed with `./rsa4096_boot.pem` from the device repo root when
@@ -72,7 +80,9 @@ specific content stays in the device repo: a `ramdisk-overlay/` directory is
 packed as cpio and appended to the unified ramdisk (recompressed to
 `deviceinfo_ramdisk_compression` when set), a committed
 `halium-boot-ramdisk.img` replaces the unified base entirely, and the
-`ramdisk` macro points at a fully prebuilt image.
+`ramdisk` macro points at a fully prebuilt image. Devices that carry their
+whole initramfs as a directory set `ramdisk_directory`, which is packed as
+gzipped cpio and used as is.
 
 ## Bundled tools
 

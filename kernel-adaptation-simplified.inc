@@ -176,13 +176,22 @@ DTB="$PWD/%{deviceinfo_bootimg_prebuilt_dtb}"
 %else
 DTB=%{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtb}
 %endif
+%if "%{?deviceinfo_append_dtb}" == "true"
+cat "$KERNEL" "$DTB" > %{_tmpdir}/kernel-dtb
+KERNEL="$PWD/%{_tmpdir}/kernel-dtb"
+%endif
 EXTRA_ARGS=""
 OUT=%{source_directory}/out/arch/%{kernel_arch}/boot/boot.img
 
 # Boot ramdisk: an explicit ramdisk macro or a halium-boot-ramdisk.img in the
 # device repo wins, otherwise the unified halium ramdisk fetched by
 # setup-env.sh is used, with ramdisk-overlay appended when present
+%if 0%{?ramdisk_directory:1}
+(cd %{ramdisk_directory} && find . | cpio -o -H newc -R 0:0 | gzip -9) > %{_tmpdir}/ramdisk-directory.img
+RAMDISK="$PWD/%{_tmpdir}/ramdisk-directory.img"
+%else
 RAMDISK="%{?ramdisk}"
+%endif
 if [ -z "$RAMDISK" ]; then
     if [ -f ./halium-boot-ramdisk.img ]; then
         RAMDISK="$PWD/halium-boot-ramdisk.img"
@@ -261,7 +270,7 @@ else
 fi
 
 #Use AVB Tool to create final boot.img
-if [ -n "%{deviceinfo_bootimg_partition_size}" ]; then
+if [ -n "%{?deviceinfo_bootimg_partition_size}" ]; then
     EXTRA_ARGS=""
     [ -f "./rsa4096_boot.pem" ] && EXTRA_ARGS=" --key ./rsa4096_boot.pem --algorithm SHA256_RSA4096"
     $AVBTOOL add_hash_footer --image "$OUT" --partition_name boot --partition_size %{deviceinfo_bootimg_partition_size} $EXTRA_ARGS
@@ -282,7 +291,7 @@ cp %{source_directory}/out/arch/%{kernel_arch}/boot/*Image* %{buildroot}/boot/
 %if 0%{?deviceinfo_dtb:1}
 cp %{source_directory}/out/arch/%{kernel_arch}/boot/dts/%{deviceinfo_dtb} %{buildroot}/boot/ || true
 %endif
-cp %{source_directory}/out/arch/%{kernel_arch}/boot/boot.img %{buildroot}/boot/ || true
+cp %{source_directory}/out/arch/%{kernel_arch}/boot/boot.img %{buildroot}/boot/%{?bootimg_name} || true
 %endif
 
 %if 0%{?devicetrees:1}
