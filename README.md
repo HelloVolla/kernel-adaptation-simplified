@@ -69,6 +69,10 @@ Optional (with defaults):
     deviceinfo_bootimg_qcdt / deviceinfo_halium_version / deviceinfo_rootfs_image_sector_size  passed to mkvendorboot.sh
     crossbuild                      OBS cross toolchain instead of makeopts/clang
 
+Put device-specific build dependencies in the device spec. For example, a
+device that sets `DTC_EXT=dtc` in `makeopts` to use the host dtc instead of the
+one in the kernel tree needs `BuildRequires: dtc` in its own spec.
+
 Boot images are signed with `./rsa4096_boot.pem` from the device repo root when
 present.
 
