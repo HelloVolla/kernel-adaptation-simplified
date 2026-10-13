@@ -367,6 +367,7 @@ int_groupadd net_bt_admin   3001
 int_groupadd net_bt      3002
 int_groupadd inet        3003
 int_groupadd net_raw     3004
+int_groupadd uhid        3011
 int_groupadd misc        9998
 
 useradd system     --uid 1000 -g system -r -s /sbin/nologin
@@ -377,6 +378,8 @@ useradd media      --uid 1013 -g media -r -s /sbin/nologin
 useradd drm        --uid 1019 -g drm -r -s /sbin/nologin
 useradd gps        --uid 1021 -g gps -r -s /sbin/nologin
 useradd nfc        --uid 1027 -g nfc -r -s /sbin/nologin
+useradd uhid       --uid 3011 -g nfc -r -s /sbin/nologin
+
 ### end group_setup
 
 %files -f %{_tmpdir}/kernel-adaptation.files
